@@ -8,15 +8,26 @@
 
 #import <UIKit/UIKit.h>
 
+@interface MGDividerArrow : UIView {}
+
+- (void) flip;
+@end
+
+
 @class MGSplitViewController;
 @interface MGSplitDividerView : UIView {
 	MGSplitViewController *splitViewController;
 	BOOL allowsDragging;
+	BOOL isRetracted;
+	MGDividerArrow *dividerArrow;
 }
 
 @property (nonatomic, assign) MGSplitViewController *splitViewController; // weak ref.
 @property (nonatomic, assign) BOOL allowsDragging;
 
-- (void)drawGripThumbInRect:(CGRect)rect;
+- (void) togglePosition;
 
 @end
+
+
+

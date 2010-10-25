@@ -12,6 +12,9 @@
 
 @implementation MGSplitDividerView
 
+#define kArrowWidth 10.0f
+#define kArrowHeight 15.0f
+#define kArrowTag 100
 
 #pragma mark -
 #pragma mark Setup and teardown
@@ -23,6 +26,7 @@
 		self.userInteractionEnabled = NO;
 		self.allowsDragging = NO;
 		self.contentMode = UIViewContentModeRedraw;
+		isRetracted = NO;
 	}
 	return self;
 }
@@ -84,95 +88,13 @@
 			UIRectFill(borderRect);
 		}
 		
-		// Draw grip.
-		[self drawGripThumbInRect:bounds];
-	}
-}
-
-
-- (void)drawGripThumbInRect:(CGRect)rect
-{
-	float width = 9.0;
-	float height;
-	if (splitViewController.vertical) {
-		height = 30.0;
-	} else {
-		height = width;
-		width = 30.0;
-	}
-	
-	// Draw grip in centred in rect.
-	CGRect gripRect = CGRectMake(0, 0, width, height);
-	gripRect.origin.x = ((rect.size.width - gripRect.size.width) / 2.0);
-	gripRect.origin.y = ((rect.size.height - gripRect.size.height) / 2.0);
-	
-	float stripThickness = 1.0;
-	UIColor *stripColor = [UIColor colorWithWhite:0.35 alpha:1.0];
-	UIColor *lightColor = [UIColor colorWithWhite:1.0 alpha:1.0];
-	float space = 3.0;
-	if (splitViewController.vertical) {
-		gripRect.size.width = stripThickness;
-		[stripColor set];
-		UIRectFill(gripRect);
+		if ([self viewWithTag:kArrowTag] == nil) {
+			CGFloat arrowYPos = (self.bounds.size.height / 2) - (kArrowHeight / 2);
+			dividerArrow = [[MGDividerArrow alloc] initWithFrame:CGRectMake(2.0, arrowYPos, kArrowWidth, kArrowHeight)];
+			NSLog(@"Arrow Added");
+			[self addSubview:dividerArrow];
+		}
 		
-		gripRect.origin.x += stripThickness;
-		gripRect.origin.y += 1;
-		[lightColor set];
-		UIRectFill(gripRect);
-		gripRect.origin.x -= stripThickness;
-		gripRect.origin.y -= 1;
-		
-		gripRect.origin.x += space + stripThickness;
-		[stripColor set];
-		UIRectFill(gripRect);
-		
-		gripRect.origin.x += stripThickness;
-		gripRect.origin.y += 1;
-		[lightColor set];
-		UIRectFill(gripRect);
-		gripRect.origin.x -= stripThickness;
-		gripRect.origin.y -= 1;
-		
-		gripRect.origin.x += space + stripThickness;
-		[stripColor set];
-		UIRectFill(gripRect);
-		
-		gripRect.origin.x += stripThickness;
-		gripRect.origin.y += 1;
-		[lightColor set];
-		UIRectFill(gripRect);
-		
-	} else {
-		gripRect.size.height = stripThickness;
-		[stripColor set];
-		UIRectFill(gripRect);
-		
-		gripRect.origin.y += stripThickness;
-		gripRect.origin.x -= 1;
-		[lightColor set];
-		UIRectFill(gripRect);
-		gripRect.origin.y -= stripThickness;
-		gripRect.origin.x += 1;
-		
-		gripRect.origin.y += space + stripThickness;
-		[stripColor set];
-		UIRectFill(gripRect);
-		
-		gripRect.origin.y += stripThickness;
-		gripRect.origin.x -= 1;
-		[lightColor set];
-		UIRectFill(gripRect);
-		gripRect.origin.y -= stripThickness;
-		gripRect.origin.x += 1;
-		
-		gripRect.origin.y += space + stripThickness;
-		[stripColor set];
-		UIRectFill(gripRect);
-		
-		gripRect.origin.y += stripThickness;
-		gripRect.origin.x -= 1;
-		[lightColor set];
-		UIRectFill(gripRect);
 	}
 }
 
@@ -181,20 +103,21 @@
 #pragma mark Interaction
 
 
-- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
-{
-	UITouch *touch = [touches anyObject];
-	if (touch) {
-		CGPoint lastPt = [touch previousLocationInView:self];
-		CGPoint pt = [touch locationInView:self];
-		float offset = (splitViewController.vertical) ? pt.x - lastPt.x : pt.y - lastPt.y;
-		if (!splitViewController.masterBeforeDetail) {
-			offset = -offset;
-		}
-		splitViewController.splitPosition = splitViewController.splitPosition + offset;
-	}
+- (void) touchesEnded:(NSSet*)touches withEvent:(UIEvent*)event {
+	[self togglePosition];
+	
 }
 
+- (void) togglePosition{
+	if (isRetracted) {
+		splitViewController.splitPosition = 320.0f;
+		isRetracted = NO;
+	}else {
+		splitViewController.splitPosition = 0.0f;
+		isRetracted = YES;
+	}
+	[dividerArrow flip];
+}
 
 #pragma mark -
 #pragma mark Accessors and properties
@@ -214,3 +137,39 @@
 
 
 @end
+
+@implementation MGDividerArrow
+
+
+
+- (id)initWithFrame:(CGRect)frame{
+    self = [super initWithFrame:frame];
+    if (self != nil) {
+        self.backgroundColor = [UIColor clearColor];
+		self.tag = kArrowTag;
+    }
+    return self;
+}
+
+- (void)drawRect:(CGRect)rect{
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextSetFillColorWithColor(context, [[UIColor colorWithRed:0.36f green:0.39f blue:0.45f alpha:1.0f] CGColor]);
+#if __IPHONE_3_2
+    CGContextSetShadowWithColor(context, CGSizeMake(0.0f, 1.0f), 0.0f, [[UIColor whiteColor] CGColor]);
+#else
+    CGContextSetShadowWithColor(context, CGSizeMake(0.0f, -1.0f), 0.0f, [[UIColor whiteColor] CGColor]);
+#endif
+	CGFloat height = rect.size.height;
+	CGFloat width = rect.size.width;
+	CGContextMoveToPoint(context, 0.0f, height/2);
+	CGContextAddLineToPoint(context, width, 0.0);
+	CGContextAddLineToPoint(context, width, height);
+    CGContextFillPath(context);
+}
+
+-(void) flip{
+	self.transform = CGAffineTransformRotate(self.transform, M_PI);
+}
+
+@end
+
